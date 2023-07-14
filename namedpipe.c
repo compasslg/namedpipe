@@ -64,74 +64,74 @@ HANDLE connect_as_client(char* name, int length){
 }
 
 BOOL connect_as_server(HANDLE handle){
-    OVERLAPPED overlapped;
-    overlapped.hEvent = CreateEvent(NULL, TRUE, TRUE, NULL);
-    overlapped.Offset = 0;
-    overlapped.OffsetHigh = 0;
+    OVERLAPPED overlapped = init_overlapoed();
     int result = ConnectNamedPipe(handle, &overlapped);
 
     // Connection succeed
-    if (result) 
+    if (!result) 
     {
-        return TRUE;
+        DWORD error = GetLastError();
+        switch(error){
+            // Client is already connected
+            case ERROR_PIPE_CONNECTED:
+                result = TRUE;
+                break;
+            // The overlapped connection in progress
+            case ERROR_IO_PENDING:
+                DWORD num_of_bytes = 0;
+                result = GetOverlappedResult(handle, &overlapped, &num_of_bytes, TRUE);
+                if(result == 0){
+                    printf("GetOverlappedResult failed with %d.\n", GetLastError()); 
+                }
+                break;
+            default:
+                printf("ConnectNamedPipe failed with %d.\n", error); 
+                break;
+        }
     }
-
-    DWORD error = GetLastError();
-    switch(error){
-        // Client is already connected
-        case ERROR_PIPE_CONNECTED:
-            return TRUE;
-        // The overlapped connection in progress
-        case ERROR_IO_PENDING:
-            DWORD num_of_bytes = 0;
-            result = GetOverlappedResult(handle, &overlapped, &num_of_bytes, TRUE);
-            if(result == 0){
-                printf("GetOverlappedResult failed with %d.\n", GetLastError()); 
-            }
-            return result;
-        default:
-            printf("ConnectNamedPipe failed with %d.\n", error); 
-            return FALSE;
-    }
+    CloseHandle(overlapped.hEvent);
+    return result;
 }
 
 int write(HANDLE pipe_handle, void* ptr, int length){
     DWORD num_of_bytes = 0;
-    OVERLAPPED overlapped;
-    overlapped.hEvent = CreateEvent(NULL, TRUE, TRUE, NULL);
-    overlapped.Offset = 0;
-    overlapped.OffsetHigh = 0;
+    OVERLAPPED overlapped = init_overlapoed();
     BOOL succeed = WriteFile(pipe_handle, ptr, length, &num_of_bytes, &overlapped);
     if(!succeed){
         DWORD error = GetLastError();
-        if(error == ERROR_IO_PENDING){
-            succeed = GetOverlappedResult(pipe_handle, &overlapped, &num_of_bytes, 1);
-            if(succeed){
-                return num_of_bytes;
-            }
+        if(error != ERROR_IO_PENDING){
+            return -1;
         }
-        return -1;
+        else if(!GetOverlappedResult(pipe_handle, &overlapped, &num_of_bytes, 1)){
+            return -1;
+        }
     }
+    CloseHandle(overlapped.hEvent);
     return num_of_bytes;
 }
 
 int read(HANDLE pipe_handle, void* ptr, int length){
     DWORD num_of_bytes = 0;
-    OVERLAPPED overlapped;
-    overlapped.hEvent = CreateEvent(NULL, TRUE, TRUE, NULL);
-    overlapped.Offset = 0;
-    overlapped.OffsetHigh = 0;
+    OVERLAPPED overlapped = init_overlapoed();
     
     BOOL succeed = ReadFile(pipe_handle, ptr, length, &num_of_bytes, &overlapped);
     if(!succeed){
         DWORD error = GetLastError();
-        if(error == ERROR_IO_PENDING){
-            succeed = GetOverlappedResult(pipe_handle, &overlapped, &num_of_bytes, 1);
-            if(succeed){
-                return num_of_bytes;
-            }
+        if(error != ERROR_IO_PENDING){
+            return -1;
         }
-        return -1;
+        else if(!GetOverlappedResult(pipe_handle, &overlapped, &num_of_bytes, 1)){
+            return -1;
+        }
     }
+    CloseHandle(overlapped.hEvent);
     return num_of_bytes;
+}
+
+OVERLAPPED init_overlapoed(){
+    OVERLAPPED overlapped;
+    overlapped.hEvent = CreateEvent(NULL, TRUE, TRUE, NULL);
+    overlapped.Offset = 0;
+    overlapped.OffsetHigh = 0;
+    return overlapped;
 }
