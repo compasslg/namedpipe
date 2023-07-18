@@ -3,7 +3,7 @@
 HANDLE create(char* name, int length);
 HANDLE connect_as_client(char* name, int length);
 BOOL connect_as_server(HANDLE handle);
-OVERLAPPED init_overlapoed();
+OVERLAPPED init_overlapped();
 
 int read(HANDLE pipe_handle, void* ptr, int length);
 int write(HANDLE pipe_handle, void* ptr, int length);

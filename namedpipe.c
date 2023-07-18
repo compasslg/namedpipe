@@ -22,9 +22,10 @@ void parse_pipe_name(const char* name, int name_length, char* dst_path){
 
 HANDLE create(char* name, int length){
     char pipe_name[PIPE_NAME_BUFFER_SIZE];
-    parse_pipe_name(name, length, pipe_name);
+    HANDLE handle;
 
-    HANDLE handle = CreateNamedPipe(
+    parse_pipe_name(name, length, pipe_name);
+    handle = CreateNamedPipe(
         pipe_name, 
         PIPE_ACCESS_DUPLEX | FILE_FLAG_FIRST_PIPE_INSTANCE | FILE_FLAG_OVERLAPPED,
         PIPE_TYPE_BYTE,
@@ -44,9 +45,10 @@ HANDLE create(char* name, int length){
 
 HANDLE connect_as_client(char* name, int length){
     char pipe_name[PIPE_NAME_BUFFER_SIZE];
-    parse_pipe_name(name, length, pipe_name);
+    HANDLE handle;
 
-    HANDLE handle = CreateFile(
+    parse_pipe_name(name, length, pipe_name);
+    handle = CreateFile(
         pipe_name,
         FILE_GENERIC_READ | FILE_GENERIC_WRITE,
         0,
@@ -64,7 +66,7 @@ HANDLE connect_as_client(char* name, int length){
 }
 
 BOOL connect_as_server(HANDLE handle){
-    OVERLAPPED overlapped = init_overlapoed();
+    OVERLAPPED overlapped = init_overlapped();
     int result = ConnectNamedPipe(handle, &overlapped);
 
     // Connection succeed
@@ -95,7 +97,7 @@ BOOL connect_as_server(HANDLE handle){
 
 int write(HANDLE pipe_handle, void* ptr, int length){
     DWORD num_of_bytes = 0;
-    OVERLAPPED overlapped = init_overlapoed();
+    OVERLAPPED overlapped = init_overlapped();
     BOOL succeed = WriteFile(pipe_handle, ptr, length, &num_of_bytes, &overlapped);
     if(!succeed){
         DWORD error = GetLastError();
@@ -112,7 +114,7 @@ int write(HANDLE pipe_handle, void* ptr, int length){
 
 int read(HANDLE pipe_handle, void* ptr, int length){
     DWORD num_of_bytes = 0;
-    OVERLAPPED overlapped = init_overlapoed();
+    OVERLAPPED overlapped = init_overlapped();
     
     BOOL succeed = ReadFile(pipe_handle, ptr, length, &num_of_bytes, &overlapped);
     if(!succeed){
@@ -128,7 +130,7 @@ int read(HANDLE pipe_handle, void* ptr, int length){
     return num_of_bytes;
 }
 
-OVERLAPPED init_overlapoed(){
+OVERLAPPED init_overlapped(){
     OVERLAPPED overlapped;
     overlapped.hEvent = CreateEvent(NULL, TRUE, TRUE, NULL);
     overlapped.Offset = 0;
